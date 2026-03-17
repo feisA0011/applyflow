@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx:*)",
+      "Bash(mkdir -p /tmp/applyflow-scaffold)",
+      "Read(//tmp/**)",
+      "Bash(cp:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
