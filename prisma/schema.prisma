@@ -1,13 +1,590 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ============================================================
+// ENGINE 1: PROFILE
+// ============================================================
+
+model MasterCV {
+  id             String   @id @default(cuid())
+  userId         String
+  version        Int
+  isActive       Boolean  @default(false)
+  fullName       String
+  email          String
+  phone          String?
+  location       String?
+  website        String?
+  linkedin       String?
+  github         String?
+  summary        String
+  experience     Json
+  education      Json
+  skills         Json
+  projects       Json?
+  certifications Json?
+  languages      Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  voiceProfile  VoiceProfile?
+  facts         VerifiedFact[]
+  cvVersions    CvVersion[]
+  personalAgent PersonalAgent?
+
+  @@index([userId])
+  @@index([userId, isActive])
+}
+
+model VoiceProfile {
+  id               String   @id @default(cuid())
+  userId           String
+  masterCvId       String   @unique
+  masterCv         MasterCV @relation(fields: [masterCvId], references: [id], onDelete: Cascade)
+  avgSentenceLen   Float
+  vocabularyLevel  String
+  quantifiesImpact Boolean
+  writingStyle     String
+  jargonPatterns   Json
+  sampleText       String
+  formality        Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model VerifiedFact {
+  id           String   @id @default(cuid())
+  userId       String
+  masterCvId   String
+  masterCv     MasterCV @relation(fields: [masterCvId], references: [id], onDelete: Cascade)
+  claim        String
+  category     String
+  technologies Json
+  timeframe    String?
+  impact       String?
+  quantified   Boolean
+  verified     Boolean  @default(true)
+  source       String   @default("user_input")
+  timesUsed    Int      @default(0)
+  lastUsedIn   String?
+  successRate  Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([masterCvId])
+  @@index([category])
+}
+
+// ============================================================
+// ENGINE 2: CAREER INTELLIGENCE
+// ============================================================
+
+model CareerTarget {
+  id          String   @id @default(cuid())
+  userId      String
+  targetRole  String
+  seniority   String?
+  locations   Json
+  remote      Boolean  @default(false)
+  salaryMin   Int?
+  salaryMax   Int?
+  industries  Json
+  companySize String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  skillGaps      SkillGap[]
+  discoveredJobs DiscoveredJob[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+}
+
+model SkillGap {
+  id             String       @id @default(cuid())
+  userId         String
+  careerTargetId String
+  careerTarget   CareerTarget @relation(fields: [careerTargetId], references: [id], onDelete: Cascade)
+  skillName      String
+  currentLevel   String?
+  requiredLevel  String
+  priority       String
+  learningPath   Json?
+  status         String       @default("open")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([careerTargetId])
+  @@index([status])
+}
+
+// ============================================================
+// ENGINE 3: DISCOVERY
+// ============================================================
+
+model DiscoveredJob {
+  id             String        @id @default(cuid())
+  userId         String
+  careerTargetId String?
+  careerTarget   CareerTarget? @relation(fields: [careerTargetId], references: [id], onDelete: SetNull)
+  title          String
+  company        String
+  location       String?
+  url            String
+  salary         String?
+  remote         Boolean       @default(false)
+  description    String
+  source         String
+  matchScore     Float?
+  matchReason    Json?
+  status         String        @default("new")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([careerTargetId])
+}
+
+// ============================================================
+// ENGINE 4: APPLICATION
+// ============================================================
+
+model Job {
+  id           String   @id @default(cuid())
+  userId       String
+  sourceUrl    String?
+  title        String
+  company      String
+  location     String?
+  description  String
+  requirements String?
+  salary       String?
+  jobType      String?
+  remote       Boolean  @default(false)
+  status       String   @default("ingested")
+  inputHash    String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  analysis        JobAnalysis?
+  cvVersions      CvVersion[]
+  coverLetters    CoverLetter[]
+  applicationPack ApplicationPack?
+  application     Application?
+  workflowRuns    WorkflowRun[]
+
+  @@index([userId])
+  @@index([userId, status])
+}
+
+model JobAnalysis {
+  id              String   @id @default(cuid())
+  userId          String
+  jobId           String   @unique
+  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  keyRequirements Json
+  niceToHaves     Json?
+  techStack       Json?
+  companyCulture  String?
+  roleLevel       String?
+  roleType        String?
+  keywords        Json
+  matchScore      Float?
+  matchReasons    Json?
+  companyResearch Json?
+  inputHash       String   @unique
+  providerUsed    String?
+  tokensUsed      Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model CvVersion {
+  id            String    @id @default(cuid())
+  userId        String
+  masterCvId    String?
+  masterCv      MasterCV? @relation(fields: [masterCvId], references: [id], onDelete: SetNull)
+  jobId         String?
+  job           Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  version       Int
+  name          String
+  summary       String
+  experience    Json
+  skills        Json
+  projects      Json?
+  factIdsUsed   Json?
+  optimizations Json?
+  matchScore    Float?
+  inputHash     String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  applicationPack   ApplicationPack?
+  coverLetters      CoverLetter[]
+  authenticityAudit AuthenticityAudit?
+
+  @@index([userId])
+  @@index([masterCvId])
+  @@index([jobId])
+}
+
+model CoverLetter {
+  id          String     @id @default(cuid())
+  userId      String
+  jobId       String
+  job         Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  cvVersionId String?
+  cvVersion   CvVersion? @relation(fields: [cvVersionId], references: [id], onDelete: SetNull)
+  content     String
+  tone        String     @default("professional")
+  keyPoints   Json?
+  factIdsUsed Json?
+  inputHash   String
+  version     Int
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  applicationPack ApplicationPack?
+
+  @@index([userId])
+  @@index([jobId])
+  @@index([cvVersionId])
+}
+
+model ApplicationPack {
+  id                String       @id @default(cuid())
+  userId            String
+  jobId             String       @unique
+  job               Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  cvVersionId       String?      @unique
+  cvVersion         CvVersion?   @relation(fields: [cvVersionId], references: [id], onDelete: SetNull)
+  coverLetterId     String?      @unique
+  coverLetter       CoverLetter? @relation(fields: [coverLetterId], references: [id], onDelete: SetNull)
+  cvPdfUrl          String?
+  coverLetterPdfUrl String?
+  emailSubject      String?
+  emailBody         String?
+  recipientEmail    String?
+  applicationScore  Float?
+  authenticityScore Float?
+  status            String       @default("draft")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+}
+
+model Application {
+  id           String    @id @default(cuid())
+  userId       String
+  jobId        String    @unique
+  job          Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  tailoredCV   String?
+  coverLetter  String?
+  emailSubject String?
+  emailBody    String?
+  matchScore   Float?
+  keyMatches   Json?
+  gaps         Json?
+  status       String    @default("draft")
+  appliedAt    DateTime?
+  contactName  String?
+  contactEmail String?
+  interviews   Json?
+  notes        String?
+  followUpAt   DateTime?
+  applyMethod  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  emailEvents    EmailEvent[]
+  interviewPreps InterviewPrep[]
+  offers         Offer[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([followUpAt])
+}
+
+// ============================================================
+// ENGINE 5: AUTHENTICITY
+// ============================================================
+
+model AuthenticityAudit {
+  id                String    @id @default(cuid())
+  userId            String
+  cvVersionId       String    @unique
+  cvVersion         CvVersion @relation(fields: [cvVersionId], references: [id], onDelete: Cascade)
+  factIdsUsed       Json
+  factsOmitted      Json
+  changesFromMaster Json
+  authenticityScore Float
+  aiDetectionScore  Float
+  keywordDensity    Float
+  voiceMatchScore   Float
+  fabricatedContent Boolean   @default(false)
+  userApproved      Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================================
+// ENGINE 6: TRACKING
+// ============================================================
+
+model EmailEvent {
+  id            String      @id @default(cuid())
+  userId        String
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  resendId      String?
+  type          String
+  metadata      Json?
+  occurredAt    DateTime
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([applicationId])
+  @@index([type])
+}
+
+// ============================================================
+// ENGINE 7: INTERVIEW
+// ============================================================
+
+model InterviewPrep {
+  id                 String      @id @default(cuid())
+  userId             String
+  applicationId      String
+  application        Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  companyResearch    Json?
+  predictedQuestions Json
+  answerFrameworks   Json?
+  interviewDate      DateTime?
+  interviewType      String?
+  mockSessions       Json?
+  thankYouSent       Boolean     @default(false)
+  debriefNotes       String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([applicationId])
+  @@index([interviewDate])
+}
+
+// ============================================================
+// ENGINE 8: NEGOTIATION
+// ============================================================
+
+model Offer {
+  id             String      @id @default(cuid())
+  userId         String
+  applicationId  String
+  application    Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  baseSalary     Int?
+  bonus          Int?
+  equity         String?
+  benefits       Json?
+  startDate      DateTime?
+  marketData     Json?
+  benchmarkScore Float?
+  counterOffers  Json?
+  status         String      @default("pending")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([applicationId])
+}
+
+// ============================================================
+// ENGINE 9: LINKEDIN
+// ============================================================
+
+model LinkedInProfile {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  profileUrl        String?
+  currentHeadline   String?
+  currentAbout      String?
+  optimizationScore Float?
+  suggestions       Json?
+  lastAnalyzedAt    DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model LinkedInPost {
+  id        String    @id @default(cuid())
+  userId    String
+  topic     String
+  content   String
+  status    String    @default("draft")
+  postedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+}
+
+// ============================================================
+// ENGINE 10: PERSONAL AGENT
+// ============================================================
+
+model PersonalAgent {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  masterCvId      String?   @unique
+  masterCv        MasterCV? @relation(fields: [masterCvId], references: [id], onDelete: SetNull)
+  name            String    @default("Atlas")
+  autonomyLevel   Int       @default(2)
+  canSendFollowUp Boolean   @default(false)
+  canPostLinkedIn Boolean   @default(false)
+  canAutoApply    Boolean   @default(false)
+  minMatchScore   Int       @default(80)
+  maxDailyApps    Int       @default(5)
+  isActive        Boolean   @default(true)
+  lastActiveAt    DateTime?
+  totalActions    Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  learnings AgentLearning[]
+
+  @@index([userId])
+}
+
+model AgentLearning {
+  id         String        @id @default(cuid())
+  userId     String
+  agentId    String
+  agent      PersonalAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type       String
+  context    String
+  insight    String
+  action     String
+  appliedTo  String
+  confidence Float         @default(0.5)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([agentId])
+}
+
+// ============================================================
+// INFRASTRUCTURE
+// ============================================================
+
+model WorkflowRun {
+  id           String    @id @default(cuid())
+  userId       String
+  workflowType String
+  jobId        String?
+  job          Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  status       String    @default("pending")
+  currentStep  String?
+  stepOutputs  Json?
+  errorMessage String?
+  errorStep    String?
+  startTime    DateTime?
+  endTime      DateTime?
+  durationMs   Int?
+  tokensUsed   Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([jobId])
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  stripeCustomerId     String    @unique
+  stripeSubscriptionId String?   @unique
+  tier                 String    @default("free")
+  status               String    @default("active")
+  applicationsUsed     Int       @default(0)
+  applicationsLimit    Int       @default(3)
+  creditsBalance       Int       @default(0)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model UsageRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  agentName String?
+  model     String?
+  tokensIn  Int?
+  tokensOut Int?
+  costUsd   Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, type])
+  @@index([createdAt])
+}
+
+model PromptVersion {
+  id                   String   @id @default(cuid())
+  userId               String
+  agentName            String
+  version              Int
+  promptText           String
+  isActive             Boolean  @default(false)
+  totalUses            Int      @default(0)
+  avgAuthenticityScore Float?
+  avgResponseRate      Float?
+  avgUserSatisfaction  Float?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([agentName, version])
+  @@index([userId])
+  @@index([agentName, isActive])
+}
+
+model AggregateInsight {
+  id         String   @id @default(cuid())
+  userId     String
+  insight    String
+  dataPoints Int
+  confidence Float
+  appliedTo  String
+  isPromoted Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isPromoted])
 }

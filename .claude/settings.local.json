@@ -5,7 +5,12 @@
       "Bash(mkdir -p /tmp/applyflow-scaffold)",
       "Read(//tmp/**)",
       "Bash(cp:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(supabase:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@127.0.0.1:54322/postgres\" DIRECT_URL=\"postgresql://postgres:postgres@127.0.0.1:54322/postgres\" npx prisma migrate dev --name init 2>&1)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@127.0.0.1:54322/postgres\" npx prisma migrate dev --name init --create-only 2>&1)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@127.0.0.1:54322/postgres\" npx prisma db pull --print)",
+      "Bash(npm run:*)"
     ]
   }
 }
