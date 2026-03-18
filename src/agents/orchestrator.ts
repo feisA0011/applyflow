@@ -117,7 +117,7 @@ export const applicationPipeline = inngest.createFunction(
       });
 
       return runRelevanceMapper({
-        facts: facts.map((f) => ({
+        facts: facts.map((f: { id: string; claim: string; category: string; technologies: unknown }) => ({
           id: f.id,
           claim: f.claim,
           category: f.category,
